@@ -346,6 +346,15 @@ class DB:
         self.conn.execute("DELETE FROM checkpoints WHERE id=?", (cid,))
         self.conn.commit()
 
+    def delete_checkpoints(self, cids):
+        self.conn.executemany(
+            "DELETE FROM checkpoints WHERE id=?", [(c,) for c in cids])
+        self.conn.commit()
+
+    def clear_checkpoints(self, pid: int):
+        self.conn.execute("DELETE FROM checkpoints WHERE project_id=?", (pid,))
+        self.conn.commit()
+
     # ---- sections -----------------------------------------------------
     def list_sections(self, pid: int):
         return self.conn.execute(
@@ -1703,15 +1712,16 @@ def launch_gui():
             ttk.Button(bar, text="Add checkpoint", command=self.add_cp).pack(side="left")
             ttk.Button(bar, text="Edit", command=self.edit_cp).pack(side="left", padx=3)
             ttk.Button(bar, text="Toggle done", command=self.toggle_cp).pack(side="left")
-            ttk.Button(bar, text="Delete", command=self.delete_cp).pack(side="left", padx=3)
+            ttk.Button(bar, text="Delete selected", command=self.delete_cp).pack(side="left", padx=3)
             ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=8)
-            ttk.Button(bar, text="Restore default checkpoints",
+            ttk.Button(bar, text="Restore default timeline (Sept 1 – Apr 30)",
                        command=self.add_defaults).pack(side="left")
             ttk.Button(bar, text="Export to Calendar (.ics)…",
                        command=self.export_ics).pack(side="left", padx=3)
 
             cols = ("status", "name", "date", "left")
-            self.tree = ttk.Treeview(self, columns=cols, show="headings")
+            self.tree = ttk.Treeview(self, columns=cols, show="headings",
+                                     selectmode="extended")
             for c, txt, wd, anc in (("status", "", 44, "center"),
                                     ("name", "Checkpoint", 420, "w"),
                                     ("date", "Target date", 130, "center"),
@@ -1722,7 +1732,10 @@ def launch_gui():
             self.tree.tag_configure("done", foreground="#2a7d3a")
             self.tree.tag_configure("overdue", foreground="#cc4b3b")
             self.tree.bind("<Double-1>", lambda e: self.edit_cp())
-            ttk.Label(self, text="Double-click a row to edit. Dates are fully adjustable.",
+            self.tree.bind("<Delete>", lambda e: self.delete_cp())
+            ttk.Label(self, text="Double-click a row to edit. Ctrl/Shift-click to select "
+                                 "several, then Delete (or the Delete key) to remove them. "
+                                 "Dates are fully adjustable.",
                       style="Sub.TLabel").pack(anchor="w")
             self._row_to_cid = {}
 
@@ -1771,6 +1784,10 @@ def launch_gui():
                     return c
             return None
 
+        def _sel_ids(self):
+            ids = [self._row_to_cid.get(i) for i in self.tree.selection()]
+            return [i for i in ids if i is not None]
+
         def add_cp(self):
             CheckpointEditor(self, self.app, None)
 
@@ -1782,24 +1799,46 @@ def launch_gui():
             CheckpointEditor(self, self.app, c)
 
         def toggle_cp(self):
-            c = self._sel()
-            if not c:
+            cps = {c["id"]: c for c in db.list_checkpoints(self.app.current_pid)}
+            ids = self._sel_ids()
+            if not ids:
                 return
-            new = 0 if c["done"] else 1
-            db.update_checkpoint(c["id"], done=new,
-                                 done_date=_dt.date.today().isoformat() if new else None)
+            today = _dt.date.today().isoformat()
+            for cid in ids:
+                c = cps.get(cid)
+                if not c:
+                    continue
+                new = 0 if c["done"] else 1
+                db.update_checkpoint(cid, done=new,
+                                     done_date=today if new else None)
             self.app.refresh_all()
 
         def delete_cp(self):
-            c = self._sel()
-            if not c:
+            ids = self._sel_ids()
+            if not ids:
+                messagebox.showinfo("No selection",
+                                    "Select one or more checkpoints to delete.")
                 return
-            if messagebox.askyesno("Delete", f"Delete checkpoint '{c['name']}'?"):
-                db.delete_checkpoint(c["id"])
-                self.refresh()
+            n = len(ids)
+            if n == 1:
+                name = self.tree.item(self.tree.selection()[0], "values")[1]
+                msg = f"Delete checkpoint '{name}'?"
+            else:
+                msg = f"Delete {n} selected checkpoints?"
+            if messagebox.askyesno("Delete", msg):
+                db.delete_checkpoints(ids)
+                self.app.refresh_all()
 
         def add_defaults(self):
             pid = self.app.current_pid
+            existing = db.list_checkpoints(pid)
+            if existing and not messagebox.askyesno(
+                "Restore default timeline",
+                f"This deletes the current {len(existing)} checkpoint(s) and "
+                "replaces them with the default AP Research timeline "
+                "(Sept 1 – April 30, submission on April 30). Continue?"):
+                return
+            db.clear_checkpoints(pid)
             dates = default_checkpoint_dates()
             for i, name in enumerate(DEFAULT_CHECKPOINTS):
                 db.add_checkpoint(pid, name, dates[i])
@@ -2063,6 +2102,18 @@ def selftest():
         sub = dates[DEFAULT_CHECKPOINTS.index(SUBMISSION_CHECKPOINT)]
         assert sub == apr, f"submission {sub} != April 30 {apr}"
     print(" Timeline window (Sep 1 -> Apr 30 submission): OK")
+
+    # bulk delete + restore-clears-old behaviour
+    all_cps = db.list_checkpoints(pid)
+    db.delete_checkpoints([all_cps[0]["id"], all_cps[1]["id"]])
+    assert len(db.list_checkpoints(pid)) == len(DEFAULT_CHECKPOINTS) - 2
+    db.clear_checkpoints(pid)
+    assert len(db.list_checkpoints(pid)) == 0
+    # simulate "restore defaults" rebuilding from a clean slate
+    for i, name in enumerate(DEFAULT_CHECKPOINTS):
+        db.add_checkpoint(pid, name, default_checkpoint_dates()[i])
+    assert len(db.list_checkpoints(pid)) == len(DEFAULT_CHECKPOINTS)
+    print(" Bulk delete + clear checkpoints: OK")
 
     sid = db.add_source(pid, "smith2020", "article", entries[0]["fields"])
     assert len(db.list_sources(pid)) == 1
