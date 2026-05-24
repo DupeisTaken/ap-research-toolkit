@@ -91,6 +91,58 @@ DEFAULT_CHECKPOINTS = [
     "Presentation & Oral Defense (POD)",
 ]
 
+# Anchors for the default timeline. The academic year runs Sept 1 -> Apr 30;
+# "Final paper submission" is pinned to April 30 and every checkpoint falls
+# after September 1.
+SEMESTER_START_MONTH, SEMESTER_START_DAY = 9, 1
+SUBMISSION_MONTH, SUBMISSION_DAY = 4, 30
+SUBMISSION_CHECKPOINT = "Final paper submission"
+
+
+def academic_window(today: Optional[_dt.date] = None):
+    """Return (sept_1, april_30) for the academic year that contains `today`.
+
+    If we are already past this cycle's April 30 (the May-Aug gap), roll
+    forward to the upcoming September -> April year so new projects get a
+    sensible future timeline.
+    """
+    today = today or _dt.date.today()
+    if today.month >= SEMESTER_START_MONTH:
+        sep = _dt.date(today.year, SEMESTER_START_MONTH, SEMESTER_START_DAY)
+        apr = _dt.date(today.year + 1, SUBMISSION_MONTH, SUBMISSION_DAY)
+    else:
+        sep = _dt.date(today.year - 1, SEMESTER_START_MONTH, SEMESTER_START_DAY)
+        apr = _dt.date(today.year, SUBMISSION_MONTH, SUBMISSION_DAY)
+    if today > apr:  # past submission (late spring/summer) -> next year
+        sep = _dt.date(today.year, SEMESTER_START_MONTH, SEMESTER_START_DAY)
+        apr = _dt.date(today.year + 1, SUBMISSION_MONTH, SUBMISSION_DAY)
+    return sep, apr
+
+
+def default_checkpoint_dates(today: Optional[_dt.date] = None):
+    """ISO target dates for DEFAULT_CHECKPOINTS, aligned to the academic year.
+
+    Checkpoints up to and including the final submission are spread evenly
+    between Sept 1 (exclusive) and April 30, so the submission lands exactly
+    on April 30. Anything after submission (the POD) is spaced two weeks out.
+    """
+    sep, apr = academic_window(today)
+    span = (apr - sep).days
+    try:
+        sub_i = DEFAULT_CHECKPOINTS.index(SUBMISSION_CHECKPOINT)
+    except ValueError:
+        sub_i = len(DEFAULT_CHECKPOINTS) - 1
+    n_pre = sub_i + 1
+    out = []
+    for i in range(len(DEFAULT_CHECKPOINTS)):
+        if i <= sub_i:
+            d = sep + _dt.timedelta(days=round(span * (i + 1) / n_pre))
+        else:
+            d = apr + _dt.timedelta(days=14 * (i - sub_i))
+        out.append(d.isoformat())
+    return out
+
+
 ENTRY_TYPES = ["article", "book", "incollection", "inproceedings",
                "online", "techreport", "phdthesis", "mastersthesis", "misc"]
 
@@ -202,13 +254,12 @@ class DB:
                 (pid, sname, target, i),
             )
         if with_defaults:
-            start = _dt.date.today()
+            dates = default_checkpoint_dates()
             for i, cname in enumerate(DEFAULT_CHECKPOINTS):
-                d = (start + _dt.timedelta(days=21 * (i + 1))).isoformat()
                 self.conn.execute(
                     "INSERT INTO checkpoints(project_id,name,target_date,sort_order) "
                     "VALUES (?,?,?,?)",
-                    (pid, cname, d, i),
+                    (pid, cname, dates[i], i),
                 )
         self.conn.commit()
         return pid
@@ -1652,10 +1703,9 @@ def launch_gui():
 
         def add_defaults(self):
             pid = self.app.current_pid
-            start = _dt.date.today()
+            dates = default_checkpoint_dates()
             for i, name in enumerate(DEFAULT_CHECKPOINTS):
-                d = (start + _dt.timedelta(days=21 * (i + 1))).isoformat()
-                db.add_checkpoint(pid, name, d)
+                db.add_checkpoint(pid, name, dates[i])
             self.app.refresh_all()
 
     # -------------------------------------------------------------------
@@ -1878,6 +1928,19 @@ def selftest():
     pid = db.create_project("Test Project")
     assert len(db.list_sections(pid)) == 7
     assert len(db.list_checkpoints(pid)) == len(DEFAULT_CHECKPOINTS)
+
+    # default timeline: starts after Sept 1, submission pinned to April 30
+    for probe in (_dt.date(2026, 5, 24), _dt.date(2026, 10, 5),
+                  _dt.date(2027, 2, 1)):
+        sep, apr = academic_window(probe)
+        assert (sep.month, sep.day) == (9, 1) and (apr.month, apr.day) == (4, 30)
+        assert apr > sep and apr.year == sep.year + 1
+        dates = [_dt.date.fromisoformat(d) for d in default_checkpoint_dates(probe)]
+        assert all(d > sep for d in dates), "a checkpoint is on/before Sept 1"
+        sub = dates[DEFAULT_CHECKPOINTS.index(SUBMISSION_CHECKPOINT)]
+        assert sub == apr, f"submission {sub} != April 30 {apr}"
+    print(" Timeline window (Sep 1 -> Apr 30 submission): OK")
+
     sid = db.add_source(pid, "smith2020", "article", entries[0]["fields"])
     assert len(db.list_sources(pid)) == 1
     db.delete_source(sid)

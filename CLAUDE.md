@@ -35,5 +35,6 @@ The file is organized top-to-bottom in dependency order: storage → parsing →
 ## Conventions
 
 - Dates are stored and compared as ISO strings (`YYYY-MM-DD`) via `datetime.date.fromisoformat`.
+- The default timeline is anchored to an academic year via `academic_window()` / `default_checkpoint_dates()`: checkpoints spread evenly from Sept 1 (exclusive) through April 30, with the `SUBMISSION_CHECKPOINT` ("Final paper submission") pinned to April 30 and the POD trailing two weeks after. Both `DB.create_project` and `TimelineTab.add_defaults` must call `default_checkpoint_dates()` rather than re-deriving dates, so they stay in sync.
 - The required word range is 4,000–5,000; `REQUIRED_SECTIONS` targets sum to 4,500 (the midpoint). Keep that invariant if editing section defaults.
 - When adding a new BibTeX entry type, update `ENTRY_TYPES`, both `_format_mla`/`_format_apa` branch logic, and the relevant `selftest()` assertions.
