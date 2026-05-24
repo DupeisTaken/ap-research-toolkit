@@ -246,13 +246,7 @@ class DB:
             "INSERT INTO projects(name, created_at) VALUES (?,?)", (name, now)
         )
         pid = cur.lastrowid
-        # required sections
-        for i, (sname, target) in enumerate(REQUIRED_SECTIONS):
-            self.conn.execute(
-                "INSERT INTO sections(project_id,name,target_words,sort_order) "
-                "VALUES (?,?,?,?)",
-                (pid, sname, target, i),
-            )
+        self._seed_sections(pid)
         if with_defaults:
             dates = default_checkpoint_dates()
             for i, cname in enumerate(DEFAULT_CHECKPOINTS):
@@ -356,6 +350,21 @@ class DB:
         self.conn.commit()
 
     # ---- sections -----------------------------------------------------
+    def _seed_sections(self, pid: int):
+        for i, (sname, target) in enumerate(REQUIRED_SECTIONS):
+            self.conn.execute(
+                "INSERT INTO sections(project_id,name,target_words,sort_order) "
+                "VALUES (?,?,?,?)",
+                (pid, sname, target, i),
+            )
+
+    def reset_sections(self, pid: int):
+        """Restore the 7 required sections to defaults: default targets,
+        word counts back to 0, and notes cleared."""
+        self.conn.execute("DELETE FROM sections WHERE project_id=?", (pid,))
+        self._seed_sections(pid)
+        self.conn.commit()
+
     def list_sections(self, pid: int):
         return self.conn.execute(
             "SELECT * FROM sections WHERE project_id=? ORDER BY sort_order, id",
@@ -1939,7 +1948,12 @@ def launch_gui():
                 self.tree.column(c, width=wd, anchor=anc)
             self.tree.pack(fill="x", pady=4)
             self.tree.bind("<Double-1>", lambda e: self.edit_section())
-            ttk.Button(self, text="Edit selected section", command=self.edit_section).pack(anchor="w", pady=4)
+            sbar = ttk.Frame(self)
+            sbar.pack(fill="x", pady=4)
+            ttk.Button(sbar, text="Edit selected section",
+                       command=self.edit_section).pack(side="left")
+            ttk.Button(sbar, text="Reset sections to defaults",
+                       command=self.reset_sections).pack(side="left", padx=6)
 
             ttk.Separator(self).pack(fill="x", pady=10)
             self.total_lbl = ttk.Label(self, text="", font=("Segoe UI", 12, "bold"))
@@ -2029,6 +2043,20 @@ def launch_gui():
             db.update_section(s["id"], current_words=cur, target_words=tgt)
             self.app.refresh_all()
 
+        def reset_sections(self):
+            pid = self.app.current_pid
+            if not pid:
+                return
+            if not messagebox.askyesno(
+                "Reset sections",
+                "Restore the 7 required sections to their defaults?\n\n"
+                "This sets word counts back to 0, restores the default word "
+                "targets, and clears all section notes. This cannot be undone."):
+                return
+            db.reset_sections(pid)
+            self.notes.delete("1.0", "end")
+            self.app.refresh_all()
+
     App().mainloop()
 
 
@@ -2114,6 +2142,17 @@ def selftest():
         db.add_checkpoint(pid, name, default_checkpoint_dates()[i])
     assert len(db.list_checkpoints(pid)) == len(DEFAULT_CHECKPOINTS)
     print(" Bulk delete + clear checkpoints: OK")
+
+    # reset sections restores defaults (zeroed words, default targets, no notes)
+    secs = db.list_sections(pid)
+    db.update_section(secs[0]["id"], current_words=999,
+                      target_words=1, notes="scratch")
+    db.reset_sections(pid)
+    secs2 = db.list_sections(pid)
+    assert [s["name"] for s in secs2] == [n for n, _ in REQUIRED_SECTIONS]
+    assert all(s["current_words"] == 0 and not s["notes"] for s in secs2)
+    assert [s["target_words"] for s in secs2] == [t for _, t in REQUIRED_SECTIONS]
+    print(" Reset sections: OK")
 
     sid = db.add_source(pid, "smith2020", "article", entries[0]["fields"])
     assert len(db.list_sources(pid)) == 1
