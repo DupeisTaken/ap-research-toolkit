@@ -980,6 +980,101 @@ def _export_pdf_fallback(path, project_name, heading, citations):
 
 
 # ===========================================================================
+#  Calendar (.ics) export
+# ===========================================================================
+
+def _ics_escape(text: str) -> str:
+    return (text.replace("\\", "\\\\").replace(";", "\\;")
+                .replace(",", "\\,").replace("\n", "\\n"))
+
+
+def _ics_fold(line: str) -> str:
+    """Fold a content line to <=75 octets per physical line (RFC 5545).
+
+    Continuation lines begin with a single space, which counts toward the
+    limit. Folds on character boundaries so UTF-8 sequences are never split.
+    """
+    if len(line.encode("utf-8")) <= 75:
+        return line
+    chunks, cur, first = [], b"", True
+    for ch in line:
+        b = ch.encode("utf-8")
+        limit = 75 if first else 74  # 74 leaves room for the leading space
+        if cur and len(cur) + len(b) > limit:
+            chunks.append(cur)
+            cur = b
+            first = False
+        else:
+            cur += b
+    chunks.append(cur)
+    pieces = [chunks[0].decode("utf-8")]
+    pieces += [" " + c.decode("utf-8") for c in chunks[1:]]
+    return "\r\n".join(pieces)
+
+
+def safe_filename(name: str) -> str:
+    return re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", name).strip() or "timeline"
+
+
+def build_ics(project_name: str, checkpoints, now=None):
+    """Return (ics_text, event_count) for the dated checkpoints.
+
+    Each checkpoint becomes an all-day VEVENT; pending ones get a one-day-
+    before display reminder. Undated checkpoints are skipped.
+    """
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//AP Research Toolkit//Research Timeline//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:" + _ics_escape(f"{project_name} - Research Timeline"),
+    ]
+    count = 0
+    for c in checkpoints:
+        td = c["target_date"]
+        if not td:
+            continue
+        try:
+            d = _dt.date.fromisoformat(td)
+        except (ValueError, TypeError):
+            continue
+        d_end = d + _dt.timedelta(days=1)  # all-day events are end-exclusive
+        done = bool(c["done"])
+        uid = f"aprt-{c['project_id']}-{c['id']}-{d.strftime('%Y%m%d')}@apresearchtoolkit"
+        summary = ("✓ " if done else "") + (c["name"] or "Checkpoint")
+        desc = f"AP Research checkpoint for {project_name}."
+        if done:
+            desc += " Completed."
+        lines += [
+            "BEGIN:VEVENT",
+            "UID:" + uid,
+            "DTSTAMP:" + stamp,
+            "DTSTART;VALUE=DATE:" + d.strftime("%Y%m%d"),
+            "DTEND;VALUE=DATE:" + d_end.strftime("%Y%m%d"),
+            "SUMMARY:" + _ics_escape(summary),
+            "DESCRIPTION:" + _ics_escape(desc),
+            "STATUS:" + ("CONFIRMED" if done else "TENTATIVE"),
+            "TRANSP:TRANSPARENT",
+        ]
+        if not done:
+            lines += [
+                "BEGIN:VALARM",
+                "ACTION:DISPLAY",
+                "DESCRIPTION:" + _ics_escape("Reminder: " + (c["name"] or "Checkpoint")),
+                "TRIGGER:-P1D",
+                "END:VALARM",
+            ]
+        lines.append("END:VEVENT")
+        count += 1
+    lines.append("END:VCALENDAR")
+    text = "\r\n".join(_ics_fold(ln) for ln in lines) + "\r\n"
+    return text, count
+
+
+# ===========================================================================
 #  GUI
 # ===========================================================================
 
@@ -1612,6 +1707,8 @@ def launch_gui():
             ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=8)
             ttk.Button(bar, text="Restore default checkpoints",
                        command=self.add_defaults).pack(side="left")
+            ttk.Button(bar, text="Export to Calendar (.ics)…",
+                       command=self.export_ics).pack(side="left", padx=3)
 
             cols = ("status", "name", "date", "left")
             self.tree = ttk.Treeview(self, columns=cols, show="headings")
@@ -1707,6 +1804,32 @@ def launch_gui():
             for i, name in enumerate(DEFAULT_CHECKPOINTS):
                 db.add_checkpoint(pid, name, dates[i])
             self.app.refresh_all()
+
+        def export_ics(self):
+            pid = self.app.current_pid
+            p = db.get_project(pid)
+            cps = db.list_checkpoints(pid)
+            if not any(c["target_date"] for c in cps):
+                messagebox.showinfo("Nothing to export",
+                                    "No checkpoints have target dates yet.")
+                return
+            ics, count = build_ics(p["name"], cps)
+            path = filedialog.asksaveasfilename(
+                defaultextension=".ics", filetypes=[("iCalendar", "*.ics")],
+                initialfile=safe_filename(f"{p['name']} timeline") + ".ics")
+            if not path:
+                return
+            try:
+                with open(path, "w", encoding="utf-8", newline="") as fh:
+                    fh.write(ics)
+            except Exception as e:
+                messagebox.showerror("Export failed", str(e))
+                return
+            messagebox.showinfo(
+                "Exported",
+                f"Exported {count} checkpoint(s) to:\n{path}\n\n"
+                "Import this file into Google Calendar, Apple Calendar, "
+                "or Outlook to see your timeline.")
 
     # -------------------------------------------------------------------
     class CheckpointEditor(tk.Toplevel):
@@ -1963,6 +2086,22 @@ def selftest():
     with open(p2, "rb") as fh:
         assert fh.read(5) == b"%PDF-", "fallback PDF header wrong"
     print(f" PDF (fallback):  OK -> {p2} ({os.path.getsize(p2)} bytes)")
+
+    # ICS calendar export
+    cps = db.list_checkpoints(pid)
+    ics, count = build_ics("Test, Project; v1", cps)
+    assert count == len(DEFAULT_CHECKPOINTS), count
+    assert ics.startswith("BEGIN:VCALENDAR\r\n")
+    assert ics.rstrip().endswith("END:VCALENDAR")
+    assert ics.count("BEGIN:VEVENT") == count
+    assert "\\," in ics and "\\;" in ics, "X-WR-CALNAME not escaped"
+    sub_date = default_checkpoint_dates()[
+        DEFAULT_CHECKPOINTS.index(SUBMISSION_CHECKPOINT)]
+    assert ("DTSTART;VALUE=DATE:" + sub_date.replace("-", "")) in ics
+    for ln in ics.split("\r\n"):
+        assert len(ln.encode("utf-8")) <= 75, f"unfolded line: {ln!r}"
+    assert "\n" not in ics.replace("\r\n", ""), "bare LF present"
+    print(f" ICS calendar export: OK ({count} events)")
 
     db.close()
     os.remove(tmp)

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A single-file Tkinter desktop app (`ap_research_toolkit.py`) for AP Research students: BibTeX source management, automatic MLA/APA citation generation + PDF export, a research timeline, and per-section word-count tracking across multiple parallel projects.
+A single-file Tkinter desktop app (`ap_research_toolkit.py`) for AP Research students: BibTeX source management, automatic MLA/APA citation generation + PDF export, a research timeline (with `.ics` calendar export), and per-section word-count tracking across multiple parallel projects.
 
 ## Commands
 
@@ -29,6 +29,8 @@ The file is organized top-to-bottom in dependency order: storage → parsing →
 - **Citation engine** (`format_citation`, `_format_mla`, `_format_apa`, `intext_citation`): the central correctness-sensitive code. Formatters return strings containing **private italic markers** `I0`/`I1` (`\x01`/`\x02`) wrapping text that should be italic. Consumers translate these: `strip_markers()` for clipboard/plain text, `.replace(I0,'*')` for the on-screen editable display, and `<i>`/`<li>` tags or stripping for the two PDF paths. Author-name handling (`split_authors`, `authors_mla`, `authors_apa`, and the `intext_*` variants) implements the 1 / 2 / 3+ → *et al.* rules and APA initials/ampersand conventions — edit these rather than the per-type formatters when author rules change.
 
 - **BibTeX** (`parse_bibtex`, `_parse_entry_body`, `to_bibtex`): hand-written brace/quote-aware parser, no external lib. `_clean_value` normalizes whitespace and strips braces.
+
+- **Calendar export** (`build_ics`): emits RFC 5545 iCalendar with one all-day `VEVENT` per dated checkpoint (CRLF line endings, `_ics_escape` for text values, `_ics_fold` to keep lines ≤75 octets, a `VALARM` reminder on pending items). The GUI writes it with `newline=""` so CRLFs aren't doubled on Windows.
 
 - **GUI** (`launch_gui`): all Tk classes are nested inside this function so they share the single module-level `db` instance via closure. `App` owns the project selector + style toggle and holds `current_pid` and `style_var`; the four tabs (`DashboardTab`, `SourcesTab`, `TimelineTab`, `SectionsTab`) each implement a `refresh()` method. `App.refresh_all()` fans out to all tabs and is the single re-render entry point — call it after any data mutation. The current citation style is read via `app.style`.
 
