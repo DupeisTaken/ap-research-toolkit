@@ -1,4 +1,4 @@
-# AP Research Toolkit — User & Support Guide
+# AP Research Toolkit
 
 The AP Research Toolkit is a desktop (and optional phone/web) app for AP
 Research students. It manages your sources, generates correctly formatted
