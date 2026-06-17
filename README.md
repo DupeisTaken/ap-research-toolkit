@@ -3,7 +3,7 @@
 The AP Research Toolkit is a desktop (and optional phone/web) app for AP
 Research students. It manages your sources, generates correctly formatted
 MLA/APA citations, tracks your research timeline, and monitors your word
-counts — all in one place, with everything stored locally on your machine.
+counts. All in one place, with everything stored locally on your machine.
 
 This guide explains how to **install**, **run**, and **troubleshoot** the
 toolkit. If you hit a problem, jump straight to
