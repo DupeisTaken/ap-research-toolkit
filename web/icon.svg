@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AP Research Toolkit">
+  <rect width="512" height="512" rx="96" fill="#1f6feb"/>
+  <g fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <!-- document / paper -->
+    <path d="M150 96h150l72 72v248a16 16 0 0 1-16 16H150a16 16 0 0 1-16-16V112a16 16 0 0 1 16-16z" fill="#ffffff" fill-opacity="0.12"/>
+    <path d="M300 96v72h72"/>
+    <line x1="176" y1="232" x2="300" y2="232"/>
+    <line x1="176" y1="288" x2="336" y2="288"/>
+    <line x1="176" y1="344" x2="280" y2="344"/>
+  </g>
+  <!-- magnifier (research) -->
+  <g fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round">
+    <circle cx="338" cy="338" r="58" fill="#1f6feb"/>
+    <line x1="380" y1="380" x2="420" y2="420"/>
+  </g>
+</svg>

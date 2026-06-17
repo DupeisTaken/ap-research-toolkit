@@ -6,9 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A single-file Tkinter desktop app (`ap_research_toolkit.py`) for AP Research students: BibTeX source management, automatic MLA/APA citation generation + PDF export, a research timeline (with `.ics` calendar export), and per-section word-count tracking across multiple parallel projects.
 
+A second entry point, `ap_research_web.py`, exposes the *same* toolkit as a mobile-friendly web app / installable PWA (for phones, where Tkinter can't run). It is a thin stdlib-only `http.server` layer that **imports and reuses** all of `ap_research_toolkit`'s logic — `DB`, the citation engine, BibTeX parsing, `build_ics`, and `export_citation_pdf` — rather than duplicating any of it. The browser UI lives in `web/` (vanilla JS SPA + `manifest.webmanifest`/`sw.js` for PWA install). When you change citation/DB/parsing logic, the web app picks it up automatically; just keep `source_payload`/route handlers in `ap_research_web.py` in step if you change a function's signature or return shape. Note `ap_research_toolkit` imports `tkinter` lazily inside `launch_gui` (not at module top), which is what lets the web layer import it on a headless/Tk-less machine — preserve that.
+
 ## Commands
 
 - Run the app: `python ap_research_toolkit.py`
+- Run the web/PWA app: `python ap_research_web.py` (stdlib only; `--host 127.0.0.1` to restrict to this machine, `--port N` to change port)
 - Run the headless test suite: `python ap_research_toolkit.py --selftest` (covers BibTeX parsing, MLA/APA full + in-text citations, author-formatting edge cases, a DB round-trip, and both PDF export paths)
 - GUI smoke test (build window + refresh tabs without blocking on `mainloop`): monkeypatch `tk.Tk.mainloop` to call `update_idletasks(); update(); refresh_all(); destroy()`, then call `m.launch_gui()`.
 

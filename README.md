@@ -25,6 +25,9 @@ locally on your machine.
   Literature Review, Methodology, Results, Discussion, Limitations, Conclusion)
   with per-section word targets and a 4,000–5,000 word total tracker.
 - **Multiple parallel projects**, each stored in a local SQLite database.
+- **Use it on your phone** — a built-in web app runs the same toolkit in a
+  browser and installs to your home screen as a PWA on Android and iOS.
+  See [Use it on your phone](#use-it-on-your-phone-web-app--android-pwa).
 
 ## Requirements
 
@@ -100,6 +103,62 @@ No Python install is needed to run these.
 ```bash
 python ap_research_toolkit.py
 ```
+
+## Use it on your phone (web app / Android PWA)
+
+The desktop window is built with Tkinter, which **cannot run on Android or
+iOS**. So instead of a native APK, the toolkit ships a built-in **web app**
+that runs the exact same logic (sources, MLA/APA citations, timeline, word
+counts) and can be **installed on your phone's home screen as a PWA** — on
+Android *and* iOS.
+
+It uses only the standard library — no Flask, no extra installs — and shares
+the same local database as the desktop app.
+
+**1. Start the server** on a computer (your laptop is fine):
+
+```bash
+python ap_research_web.py
+```
+
+It prints two URLs, e.g.:
+
+```
+  Local:   http://localhost:8000
+  Network: http://192.168.1.42:8000   (open this on your phone, same Wi-Fi)
+```
+
+**2. Open it on your phone.** Put the phone on the **same Wi-Fi** as the
+computer and visit the `Network:` URL in Chrome (Android) or Safari (iOS).
+
+**3. Install it as an app:**
+
+- **iOS (Safari):** tap **Share** → **Add to Home Screen**. Launches
+  full-screen with its own icon.
+- **Android (Chrome):** tap the **⋮** menu → **Add to Home screen**.
+
+Notes:
+
+- The computer running `python ap_research_web.py` must stay on while you use
+  the phone app — it's the server holding your data.
+- By default the server binds to all interfaces so phones on your network can
+  reach it. Restrict it to just your machine with
+  `python ap_research_web.py --host 127.0.0.1`, or change the port with
+  `--port 9000`.
+- **About full "install" on Android:** Chrome only offers a *true* installed
+  PWA (standalone window + offline support via the service worker) over a
+  **secure origin** — HTTPS or `localhost`. On a plain `http://` LAN address
+  the **Add to Home screen** shortcut still works, but it may open in a browser
+  tab and won't cache offline. To get the full installable experience, serve it
+  over HTTPS — e.g. host the app on a small server with a certificate, or put it
+  behind a tunnel like [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+  or `ngrok`, which give you an HTTPS URL you can open from anywhere. iOS
+  Safari's **Add to Home Screen** works either way.
+
+> **Why not a real `.apk`?** Packaging Python for Android (Buildozer,
+> python-for-android, BeeWare) only supports their own UI toolkits — none can
+> bundle a Tkinter app. A PWA gives you an installable, offline-capable home
+> screen app on every phone without rewriting the GUI in a niche framework.
 
 ## Building your own executable
 

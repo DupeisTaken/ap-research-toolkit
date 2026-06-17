@@ -1,0 +1,19 @@
+{
+  "name": "AP Research Toolkit",
+  "short_name": "AP Research",
+  "description": "Sources, citations, research timeline, and word-count tracking for AP Research.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#1f6feb",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
