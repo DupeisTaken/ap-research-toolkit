@@ -25,6 +25,7 @@ toolkit. If you hit a problem, jump straight to
 - [Using the toolkit on your phone](#using-the-toolkit-on-your-phone)
 - [Troubleshooting](#troubleshooting)
 - [Frequently asked questions](#frequently-asked-questions)
+- [Reporting an issue](#reporting-an-issue)
 - [For developers](#for-developers)
 - [License](#license)
 
@@ -269,6 +270,38 @@ Yes. The web app reads and writes the same local database as the desktop app.
 **How do I back up or move my data?**
 Copy the database from the data directory listed above to your new machine's
 matching location.
+
+---
+
+## Reporting an issue
+
+Found a bug, a wrong citation, or something missing from this guide? Issues are
+tracked on GitHub.
+
+**Before you report:**
+
+1. Check [Troubleshooting](#troubleshooting) and the
+   [FAQ](#frequently-asked-questions) — your problem may already have a fix.
+2. [Search existing issues](../../issues) to see whether it's already been
+   reported. If so, add your details as a comment instead of opening a duplicate.
+
+**To file a new report**, open the [**Issues**](../../issues) page and click
+**New issue** (or go straight to [report a new issue](../../issues/new)).
+To help us reproduce and fix it quickly, please include:
+
+- **What you were doing** — the steps that led to the problem.
+- **What you expected** vs. **what actually happened**.
+- **The exact error message**, copied as text, plus a screenshot if it helps.
+- **How you're running the toolkit** — the prebuilt app, from source, or the
+  phone/web app.
+- **Your environment** — operating system and version, and (if running from
+  source) your Python version from `python --version`.
+
+For citation problems, also paste the **BibTeX source** and the citation
+**style** (MLA or APA) so the exact entry can be reproduced.
+
+> **Security note:** please don't paste passwords or other sensitive personal
+> information into an issue — they're public.
 
 ---
 
