@@ -35,14 +35,59 @@ locally on your machine.
 otherwise the app silently falls back to a built-in pure-Python PDF writer, so
 export always works even on a machine with nothing extra installed.
 
-## Running
+## Download (no Python required)
+
+Prebuilt standalone executables are attached to the
+[**Releases**](../../releases) page:
+
+| Platform | File | How to run |
+|----------|------|------------|
+| Windows  | `ap_research_toolkit.exe` | Double-click. Windows SmartScreen may warn on an unsigned app — choose **More info → Run anyway**. |
+| macOS    | `ap_research_toolkit-mac.zip` | Unzip, then double-click `ap_research_toolkit.app`. The app is unsigned, so the first time **right-click → Open** (or allow it under **System Settings → Privacy & Security**). |
+
+No Python install is needed to run these.
+
+## Running from source
 
 ```bash
 python ap_research_toolkit.py
 ```
 
-A prebuilt standalone executable is also available under `dist/` (no Python
-required to run it).
+## Building your own executable
+
+The standalone executables are built with [PyInstaller](https://pyinstaller.org).
+Install it first:
+
+```bash
+pip install pyinstaller
+```
+
+Then build from the project root using the bundled spec file (recommended, so
+the build options stay consistent):
+
+```bash
+pyinstaller ap_research_toolkit.spec
+```
+
+…or generate a one-file, windowed build from scratch:
+
+```bash
+pyinstaller --onefile --windowed --name ap_research_toolkit ap_research_toolkit.py
+```
+
+The result lands in `dist/`:
+
+- **Windows** → `dist/ap_research_toolkit.exe`
+- **macOS** → `dist/ap_research_toolkit.app` (zip the `.app` bundle to share it)
+
+Notes:
+
+- PyInstaller is **not** cross-platform — build the Windows `.exe` on Windows
+  and the macOS `.app` on a Mac.
+- The build needs only PyInstaller plus the same runtime dependencies as the
+  app (standard library + Tkinter; optionally `reportlab` for nicer PDFs).
+- `build/`, `dist/`, and the packaged `.zip` are generated artifacts and are
+  not tracked in git — publish them as Release assets instead (see below).
 
 ## Where your data lives
 

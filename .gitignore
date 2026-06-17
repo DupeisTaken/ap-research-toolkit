@@ -4,3 +4,8 @@ __pycache__/
 *.bib
 *.db
 .venv/
+
+# PyInstaller build artifacts (publish these as GitHub Release assets instead)
+build/
+dist/
+*.zip
