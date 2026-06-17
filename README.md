@@ -35,6 +35,54 @@ locally on your machine.
 otherwise the app silently falls back to a built-in pure-Python PDF writer, so
 export always works even on a machine with nothing extra installed.
 
+### Installing Tkinter on macOS
+
+If running from source fails with `ModuleNotFoundError: No module named
+'tkinter'` (or `_tkinter`), your Python was built without Tk support. macOS
+does **not** reliably bundle a working Tkinter, so it often needs to be added
+separately. Pick the option that matches how you installed Python:
+
+- **python.org installer (easiest)** — Download Python from
+  [python.org/downloads/macos](https://www.python.org/downloads/macos/). These
+  official builds ship with their own Tcl/Tk, so Tkinter works out of the box
+  with no extra steps.
+
+- **Homebrew Python** — install the matching Tk package:
+
+  ```bash
+  brew install python-tk
+  ```
+
+  If you have several Python versions, target yours explicitly, e.g.
+  `brew install python-tk@3.12`. Run `which python3` to confirm you're using the
+  Homebrew Python (`/opt/homebrew/bin/python3` on Apple Silicon, or
+  `/usr/local/bin/python3` on Intel) rather than the bare system Python.
+
+- **pyenv** — pyenv compiles Python from source, so Tk must be present *before*
+  you build. Install it and then (re)install your Python version:
+
+  ```bash
+  brew install tcl-tk
+  pyenv install 3.12          # re-run for the version you use; reinstalls with Tk
+  ```
+
+  Recent pyenv auto-detects Homebrew's `tcl-tk`. If the build still misses it,
+  point the compiler at it explicitly:
+
+  ```bash
+  export PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib'"
+  pyenv install 3.12
+  ```
+
+**Verify it works** — this should pop up a small test window:
+
+```bash
+python3 -c "import tkinter; tkinter._test()"
+```
+
+(If you don't want to deal with any of this, just grab the prebuilt macOS app
+from [Releases](../../releases) — it bundles everything and needs no Python.)
+
 ## Download (no Python required)
 
 Prebuilt standalone executables are attached to the
