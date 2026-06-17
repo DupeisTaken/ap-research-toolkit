@@ -282,8 +282,3 @@ This headless suite covers BibTeX parsing, MLA/APA full and in-text citations, a
 
 The desktop app lives in `ap_research_toolkit.py`, organized top-to-bottom in dependency order: storage → parsing → citation logic → PDF → GUI → entry point. The phone/web app (`ap_research_web.py` plus the `web/` directory) is a thin standard-library HTTP layer that reuses that same logic. See `CLAUDE.md` for a fuller tour of the architecture and conventions.
 
----
-
-## License
-
-MIT
