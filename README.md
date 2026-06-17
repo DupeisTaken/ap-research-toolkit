@@ -48,16 +48,14 @@ toolkit. If you hit a problem, jump straight to
 | Item | Requirement |
 |------|-------------|
 | **Operating system** | Windows, macOS, or Linux. |
-| **To run the prebuilt app** | Nothing — the executable is self-contained. See [Option A](#option-a--prebuilt-app-recommended). |
+| **To run the prebuilt app** | The executable is self-contained. See [Option A](#option-a--prebuilt-app-recommended). |
 | **To run from source** | **Python 3.x** with **Tkinter** (bundled with most Python installs; see the [Tkinter note for macOS](#symptom-modulenotfounderror-no-module-named-tkinter)). |
 | **Extra packages** | None required. The app uses only the Python standard library. |
-| **Optional** | `reportlab` — if installed, PDFs are rendered with it; otherwise the app automatically falls back to a built-in pure-Python PDF writer, so **PDF export always works** even with nothing extra installed. |
+| **Optional** | `reportlab`. If installed, PDFs are rendered with it; otherwise the app automatically falls back to a built-in pure-Python PDF writer. **PDF export always works** even with nothing extra installed. |
 
 ---
 
 ## Installation
-
-You have two options. Most students should use **Option A**.
 
 ### Option A — Prebuilt app (recommended)
 
@@ -77,7 +75,7 @@ Requires Python 3.x with Tkinter (see [System requirements](#system-requirements
 python ap_research_toolkit.py
 ```
 
-If this fails with a `tkinter` error, see
+If this fails with a `tkinter` error, see |
 [ModuleNotFoundError: No module named 'tkinter'](#symptom-modulenotfounderror-no-module-named-tkinter).
 
 ---
@@ -88,7 +86,7 @@ The desktop window is built with Tkinter, which **cannot run on Android or
 iOS**. Instead, the toolkit ships a built-in **web app** that runs the exact
 same logic (sources, MLA/APA citations, timeline, word counts) and can be
 **installed on your phone's home screen as a PWA**. It uses only the standard
-library — no Flask, no extra installs — and shares the same local database as
+library (no Flask, no extra installs) and shares the same local database as
 the desktop app.
 
 **Step 1 — Start the server** on a computer (your laptop is fine):
@@ -149,7 +147,7 @@ Find your symptom below. Each entry lists the likely **cause** and the
   program.
 - **Resolution:** **Right-click (or Control-click) the app → Open**, then
   confirm. Alternatively, allow it under **System Settings → Privacy &
-  Security**. This is only required the first time you launch it.
+  Security**. This is only required the first time you launch it. Check [Open a Mac app from an unknown developer - Apple Support](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac) for further details.
 
 ### Symptom: `ModuleNotFoundError: No module named 'tkinter'`
 
@@ -248,7 +246,7 @@ Find your symptom below. Each entry lists the likely **cause** and the
 ## Frequently asked questions
 
 **Where is my data stored?**
-In a per-user application data directory — **not** in this repository — so it
+In a per-user application data directory (**not** in this repository). It
 persists across runs regardless of where you launch the app:
 
 | Platform | Location |
@@ -304,7 +302,7 @@ Output lands in `dist/`:
 
 Notes:
 
-- PyInstaller is **not** cross-platform — build the Windows `.exe` on Windows
+- PyInstaller is **not** cross-platform. Build the Windows `.exe` on Windows
   and the macOS `.app` on a Mac.
 - The build needs only PyInstaller plus the same runtime dependencies as the app
   (standard library + Tkinter; optionally `reportlab` for nicer PDFs).
