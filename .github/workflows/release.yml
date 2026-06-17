@@ -1,0 +1,77 @@
+name: Release
+
+# Build standalone executables and publish a GitHub Release whenever a
+# version tag is pushed, e.g.:
+#
+#   git tag v1.0.0
+#   git push origin v1.0.0
+#
+# PyInstaller is not cross-platform, so the Windows .exe and macOS .app are
+# built on their own native runners and then collected into a single release.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build dependencies
+        run: pip install pyinstaller reportlab
+      - name: Run self-test
+        run: python ap_research_toolkit.py --selftest
+      - name: Build Windows executable
+        run: pyinstaller --onefile --windowed --name ap_research_toolkit ap_research_toolkit.py
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/ap_research_toolkit.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build dependencies
+        run: pip install pyinstaller reportlab
+      - name: Run self-test
+        run: python ap_research_toolkit.py --selftest
+      - name: Build macOS app bundle
+        run: pyinstaller --onefile --windowed --name ap_research_toolkit ap_research_toolkit.py
+      - name: Zip the .app bundle
+        run: |
+          cd dist
+          zip -r ap_research_toolkit-mac.zip ap_research_toolkit.app
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/ap_research_toolkit-mac.zip
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/windows/ap_research_toolkit.exe
+            artifacts/macos/ap_research_toolkit-mac.zip
+          generate_release_notes: true
